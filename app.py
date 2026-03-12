@@ -11,6 +11,8 @@ import plotly.express as px
 from pathlib import Path
 from datetime import datetime
 import time, io, os
+import re
+import unicodedata
 
 # ── Configuración de página ────────────────────────────────────────
 st.set_page_config(
@@ -61,10 +63,49 @@ def calcular_todas_las_medidas(df_raw: pd.DataFrame) -> pd.DataFrame:
     """
     df = df_raw.copy()
 
-    # ── Nombres de columna normalizados
-    df.columns = df.columns.str.strip()
-    df['Nombre y Apellido'] = df['Nombre y Apellido'].str.strip()
-    df['Sexo']              = df['Sexo'].str.strip().str.upper()
+    # ── Normalizar nombres de columna (minimiza errores por acentos/espacios)
+    def _normalize(col: str) -> str:
+        s = str(col).strip().lower()
+        s = unicodedata.normalize('NFKD', s)
+        s = ''.join(ch for ch in s if not unicodedata.combining(ch))
+        s = re.sub(r"[^a-z0-9]", "", s)
+        return s
+
+    expected = {
+        'nombreyapellido': 'Nombre y Apellido',
+        'dni': 'DNI',
+        'sexo': 'Sexo',
+        'deporte': 'Deporte',
+        'fechadenacimiento': 'Fecha de Nacimiento',
+        'fechadeevaluacion': 'Fecha de Evaluacion',
+        'alturadepie': 'Altura de Pie',
+        'altura sentado': 'Altura sentado',
+        'alturasentado': 'Altura sentado',
+        'peso': 'Peso',
+        'alturadelpadre': 'Altura del padre',
+        'alturadelamadre': 'Altura de la madre',
+    }
+
+    # Renombrar columnas en el DataFrame según coincidencia normalizada.
+    col_map = {}
+    for col in df.columns:
+        key = _normalize(col)
+        if key in expected:
+            col_map[col] = expected[key]
+    df = df.rename(columns=col_map)
+
+    required_cols = [
+        'Nombre y Apellido', 'Sexo', 'Deporte',
+        'Fecha de Nacimiento', 'Fecha de Evaluacion',
+        'Altura de Pie', 'Altura sentado', 'Peso',
+        'Altura del padre', 'Altura de la madre'
+    ]
+    missing = [c for c in required_cols if c not in df.columns]
+    if missing:
+        raise KeyError(f"Faltan columnas requeridas en el Excel: {missing}")
+
+    df['Nombre y Apellido'] = df['Nombre y Apellido'].astype(str).str.strip()
+    df['Sexo']              = df['Sexo'].astype(str).str.strip().str.upper()
     col_altura  = 'Altura de Pie'
     col_sentado = 'Altura sentado'
     col_peso    = 'Peso'
