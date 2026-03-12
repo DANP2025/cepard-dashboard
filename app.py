@@ -331,112 +331,129 @@ with st.sidebar:
     st.markdown("**Crecimiento y Maduración**")
     st.divider()
 
-    st.markdown("### 📡 Fuente de datos")
-    fuente = st.radio("Origen", ["📁 Archivo local", "☁️ OneDrive / URL"],
+    # ── VISTAS (para que sea lo primero que el usuario elija)
+    st.markdown("### 🗂️ Vistas")
+    pagina = st.radio("Vista",
+                      ["🏃 DEPORTISTAS", "👤 PERFIL", "💡 INSIGHT"],
                       label_visibility="collapsed")
-
-    df_raw = None
-    ts_carga = "—"
-    fuente_ok = False
-
-    if fuente == "☁️ OneDrive / URL":
-        default_url = ""
-        try:
-            default_url = st.secrets.get("ONEDRIVE_URL", "")
-        except Exception:
-            pass
-        url_input = st.text_input("URL del Excel:", value=default_url,
-                                  placeholder="https://1drv.ms/x/s!...")
-        c1, c2 = st.columns(2)
-        with c1:
-            intervalo = st.selectbox("Auto-refresh",
-                ["5 min","15 min","30 min","1 hora","Desactivado"])
-        with c2:
-            if st.button("🔄 Ahora", use_container_width=True):
-                cargar_onedrive.clear()
-                st.rerun()
-
-        if url_input:
-            with st.spinner("Descargando..."):
-                try:
-                    df_raw, ts_carga = cargar_onedrive(url_input)
-                    fuente_ok = True
-                    st.markdown(f'<span class="sync-ok">✅ {ts_carga}</span>',
-                                unsafe_allow_html=True)
-                except Exception as e:
-                    st.markdown(f'<span class="sync-err">❌ {str(e)[:60]}</span>',
-                                unsafe_allow_html=True)
-
-        # Auto-refresh
-        if intervalo != "Desactivado" and url_input and fuente_ok:
-            mins = {"5 min":5,"15 min":15,"30 min":30,"1 hora":60}[intervalo]
-            if "last_refresh" not in st.session_state:
-                st.session_state.last_refresh = time.time()
-            if (time.time() - st.session_state.last_refresh)/60 >= mins:
-                cargar_onedrive.clear()
-                st.session_state.last_refresh = time.time()
-                st.rerun()
-    else:
-        uploaded = st.file_uploader("Subir Excel actualizado:", type=["xlsx"])
-        if st.button("🔄 Recargar", use_container_width=True):
-            cargar_local.clear()
-            st.rerun()
-        if uploaded:
-            try:
-                df_raw   = _leer_excel(uploaded.read())
-                ts_carga = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-                fuente_ok = True
-                st.markdown(f'<span class="sync-ok">✅ {ts_carga}</span>',
-                            unsafe_allow_html=True)
-            except Exception as e:
-                st.error(f"Error: {e}")
-        elif LOCAL_FILE.exists():
-            try:
-                df_raw, ts_carga = cargar_local(str(LOCAL_FILE))
-                fuente_ok = True
-                st.markdown(f'<span class="sync-warn">📂 Local: {ts_carga}</span>',
-                            unsafe_allow_html=True)
-            except Exception as e:
-                st.error(f"Error al leer el archivo: {e}")
-        else:
-            st.warning("⚠️ No se encontró el archivo Excel.\nColocá el archivo en la misma carpeta que app.py")
-
-    if df_raw is None:
-        st.stop()
-
     st.divider()
-    st.markdown("### 🔎 Filtros")
 
-    todos = sorted(df_raw["Nombre y Apellido"].unique().tolist())
-    dep_sel = st.multiselect("👤 DEPORTISTAS", options=todos, default=todos)
+    # ── DEPORTISTAS (filtros dinámicos para que sea funcional y fácil de usar)
+    st.markdown("### 👤 Deportistas")
+    todos = []
+    deportes = []
+    sexos = []
+    grupos_mad = []
+
+    # Pre-cargar las listas de opciones sólo si ya se cargaron datos (evita errores en el primer render)
+    if 'df_raw' in st.session_state and st.session_state.df_raw is not None:
+        df_temp = st.session_state.df_raw
+        todos = sorted(df_temp["Nombre y Apellido"].unique().tolist())
+        deportes = sorted(df_temp["Deporte"].unique().tolist())
+        sexos = sorted(df_temp["Sexo"].unique().tolist())
+        grupos_mad = sorted(df_temp["Categoria_Maduracion_Unificada"].unique().tolist())
+
+    dep_sel = st.multiselect("👤 Deportistas", options=todos, default=todos)
     if not dep_sel:
         dep_sel = todos
 
-    deportes = sorted(df_raw["Deporte"].unique().tolist())
     dep_deporte = st.multiselect("⚽ Deporte", options=deportes, default=deportes)
     if not dep_deporte:
         dep_deporte = deportes
 
-    sexos = sorted(df_raw["Sexo"].unique().tolist())
     dep_sexo = st.multiselect("⚧ Sexo", options=sexos, default=sexos)
     if not dep_sexo:
         dep_sexo = sexos
 
-    grupos_mad = sorted(df_raw["Categoria_Maduracion_Unificada"].unique().tolist())
     dep_mad = st.multiselect("🧬 Maduración", options=grupos_mad, default=grupos_mad)
     if not dep_mad:
         dep_mad = grupos_mad
 
     st.divider()
-    st.markdown("### 🗂️ Vista")
-    pagina = st.radio("Vista",
-        ["🏃 DEPORTISTAS", "👤 PERFIL", "💡 INSIGHT"],
-        label_visibility="collapsed")
+
+    # ── FUENTE DE DATOS (al final, porque vos sos quien actualiza los datos)
+    with st.expander("📡 Fuente de datos", expanded=False):
+        st.markdown("Usa el archivo interno (no modificable desde el link). Si querés actualizar datos, sube el Excel al repo y vuelve a desplegar.")
+
+        if st.button("🔄 Recargar datos (local)", use_container_width=True):
+            cargar_local.clear()
+            st.experimental_rerun()
+
+        st.markdown("**Opción avanzada:** cargar desde URL externa")
+        fuente = st.radio("Origen", ["📁 Local", "☁️ OneDrive / URL"], index=0, label_visibility="collapsed")
+
+        df_raw = None
+        ts_carga = "—"
+        fuente_ok = False
+
+        if fuente == "☁️ OneDrive / URL":
+            default_url = ""
+            try:
+                default_url = st.secrets.get("ONEDRIVE_URL", "")
+            except Exception:
+                pass
+            url_input = st.text_input("URL del Excel:", value=default_url,
+                                      placeholder="https://1drv.ms/x/s!...")
+            c1, c2 = st.columns(2)
+            with c1:
+                intervalo = st.selectbox("Auto-refresh",
+                    ["5 min","15 min","30 min","1 hora","Desactivado"])
+            with c2:
+                if st.button("🔄 Ahora", use_container_width=True):
+                    cargar_onedrive.clear()
+                    st.experimental_rerun()
+
+            if url_input:
+                with st.spinner("Descargando..."):
+                    try:
+                        df_raw, ts_carga = cargar_onedrive(url_input)
+                        fuente_ok = True
+                        st.markdown(f'<span class="sync-ok">✅ {ts_carga}</span>',
+                                    unsafe_allow_html=True)
+                    except Exception as e:
+                        st.markdown(f'<span class="sync-err">❌ {str(e)[:60]}</span>',
+                                    unsafe_allow_html=True)
+
+            # Auto-refresh
+            if intervalo != "Desactivado" and url_input and fuente_ok:
+                mins = {"5 min":5,"15 min":15,"30 min":30,"1 hora":60}[intervalo]
+                if "last_refresh" not in st.session_state:
+                    st.session_state.last_refresh = time.time()
+                if (time.time() - st.session_state.last_refresh)/60 >= mins:
+                    cargar_onedrive.clear()
+                    st.session_state.last_refresh = time.time()
+                    st.experimental_rerun()
+        else:
+            if LOCAL_FILE.exists():
+                try:
+                    df_raw, ts_carga = cargar_local(str(LOCAL_FILE))
+                    fuente_ok = True
+                    st.markdown(f'<span class="sync-warn">📂 Local: {ts_carga}</span>',
+                                unsafe_allow_html=True)
+                except Exception as e:
+                    st.error(f"Error al leer el archivo: {e}")
+            else:
+                st.warning("⚠️ No se encontró el archivo Excel local. Colócalo en la misma carpeta que app.py")
+
+        # Guardar en sesión para que los filtros se actualicen correctamente
+        st.session_state.df_raw = df_raw
+        st.session_state.ts_carga = ts_carga
+        st.session_state.fuente_ok = fuente_ok
 
     st.divider()
-    n_dep = df_raw["Nombre y Apellido"].nunique()
-    st.caption(f"📊 {len(df_raw)} evaluaciones | {n_dep} deportistas")
-    st.caption(f"🕒 {ts_carga}")
+
+    n_dep = len(st.session_state.df_raw) if st.session_state.get('df_raw') is not None else 0
+    st.caption(f"📊 {n_dep} evaluaciones")
+    st.caption(f"🕒 {st.session_state.get('ts_carga','—')}")
+
+# Si no hay datos cargados, detener la ejecución
+if st.session_state.get('df_raw') is None:
+    st.stop()
+
+# Usar los datos guardados en sesión
+df_raw = st.session_state.df_raw
+ts_carga = st.session_state.ts_carga
+fuente_ok = st.session_state.fuente_ok
 
 
 # ══════════════════════════════════════════════════════════════════
