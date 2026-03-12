@@ -338,20 +338,35 @@ with st.sidebar:
                       label_visibility="collapsed")
     st.divider()
 
-    # ── DEPORTISTAS (filtros dinámicos para que sea funcional y fácil de usar)
-    st.markdown("### 👤 Deportistas")
-    todos = []
-    deportes = []
-    sexos = []
-    grupos_mad = []
+    # ── CARGA DE DATOS (necesaria para que los filtros funcionen inmediatamente)
+    if "df_raw" not in st.session_state or st.session_state.df_raw is None:
+        try:
+            df_raw, ts_carga = cargar_local(str(LOCAL_FILE))
+            st.session_state.df_raw = df_raw
+            st.session_state.ts_carga = ts_carga
+            st.session_state.fuente_ok = True
+            st.session_state.source_desc = "Local"  # archivo incluido en el repo
+        except Exception as e:
+            st.session_state.df_raw = None
+            st.session_state.ts_carga = "—"
+            st.session_state.fuente_ok = False
+            st.session_state.source_desc = "Error"
+            st.error(f"Error al leer el archivo local: {e}")
 
-    # Pre-cargar las listas de opciones sólo si ya se cargaron datos (evita errores en el primer render)
-    if 'df_raw' in st.session_state and st.session_state.df_raw is not None:
-        df_temp = st.session_state.df_raw
-        todos = sorted(df_temp["Nombre y Apellido"].unique().tolist())
-        deportes = sorted(df_temp["Deporte"].unique().tolist())
-        sexos = sorted(df_temp["Sexo"].unique().tolist())
-        grupos_mad = sorted(df_temp["Categoria_Maduracion_Unificada"].unique().tolist())
+    df_raw = st.session_state.get("df_raw")
+    ts_carga = st.session_state.get("ts_carga", "—")
+    fuente_ok = st.session_state.get("fuente_ok", False)
+    source_desc = st.session_state.get("source_desc", "")
+
+    # ── DEPORTISTAS (filtros dinámicos)
+    st.markdown("### 👤 Deportistas")
+    if df_raw is not None:
+        todos = sorted(df_raw["Nombre y Apellido"].unique().tolist())
+        deportes = sorted(df_raw["Deporte"].unique().tolist())
+        sexos = sorted(df_raw["Sexo"].unique().tolist())
+        grupos_mad = sorted(df_raw["Categoria_Maduracion_Unificada"].unique().tolist())
+    else:
+        todos = deportes = sexos = grupos_mad = []
 
     dep_sel = st.multiselect("👤 Deportistas", options=todos, default=todos)
     if not dep_sel:
@@ -371,20 +386,17 @@ with st.sidebar:
 
     st.divider()
 
-    # ── FUENTE DE DATOS (al final, porque vos sos quien actualiza los datos)
+    # ── FUENTE DE DATOS (expander, porque por defecto usamos el archivo local del repo)
     with st.expander("📡 Fuente de datos", expanded=False):
-        st.markdown("Usa el archivo interno (no modificable desde el link). Si querés actualizar datos, sube el Excel al repo y vuelve a desplegar.")
+        st.markdown("La app usa el archivo local incluido en el repo. Si necesitás actualizar datos, reemplaza el Excel y redeploya.")
+        st.markdown(f"**Fuente actual:** {source_desc} | {ts_carga}")
 
         if st.button("🔄 Recargar datos (local)", use_container_width=True):
             cargar_local.clear()
             st.experimental_rerun()
 
-        st.markdown("**Opción avanzada:** cargar desde URL externa")
+        st.markdown("**Opción avanzada (no obligatoria):** cargar desde URL externa")
         fuente = st.radio("Origen", ["📁 Local", "☁️ OneDrive / URL"], index=0, label_visibility="collapsed")
-
-        df_raw = None
-        ts_carga = "—"
-        fuente_ok = False
 
         if fuente == "☁️ OneDrive / URL":
             default_url = ""
@@ -408,8 +420,11 @@ with st.sidebar:
                     try:
                         df_raw, ts_carga = cargar_onedrive(url_input)
                         fuente_ok = True
-                        st.markdown(f'<span class="sync-ok">✅ {ts_carga}</span>',
-                                    unsafe_allow_html=True)
+                        st.session_state.df_raw = df_raw
+                        st.session_state.ts_carga = ts_carga
+                        st.session_state.fuente_ok = True
+                        st.session_state.source_desc = "URL"
+                        st.experimental_rerun()
                     except Exception as e:
                         st.markdown(f'<span class="sync-err">❌ {str(e)[:60]}</span>',
                                     unsafe_allow_html=True)
@@ -423,28 +438,12 @@ with st.sidebar:
                     cargar_onedrive.clear()
                     st.session_state.last_refresh = time.time()
                     st.experimental_rerun()
-        else:
-            if LOCAL_FILE.exists():
-                try:
-                    df_raw, ts_carga = cargar_local(str(LOCAL_FILE))
-                    fuente_ok = True
-                    st.markdown(f'<span class="sync-warn">📂 Local: {ts_carga}</span>',
-                                unsafe_allow_html=True)
-                except Exception as e:
-                    st.error(f"Error al leer el archivo: {e}")
-            else:
-                st.warning("⚠️ No se encontró el archivo Excel local. Colócalo en la misma carpeta que app.py")
-
-        # Guardar en sesión para que los filtros se actualicen correctamente
-        st.session_state.df_raw = df_raw
-        st.session_state.ts_carga = ts_carga
-        st.session_state.fuente_ok = fuente_ok
 
     st.divider()
 
-    n_dep = len(st.session_state.df_raw) if st.session_state.get('df_raw') is not None else 0
+    n_dep = len(df_raw) if df_raw is not None else 0
     st.caption(f"📊 {n_dep} evaluaciones")
-    st.caption(f"🕒 {st.session_state.get('ts_carga','—')}")
+    st.caption(f"🕒 {ts_carga}")
 
 # Si no hay datos cargados, detener la ejecución
 if st.session_state.get('df_raw') is None:
