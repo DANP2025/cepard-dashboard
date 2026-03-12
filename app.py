@@ -65,7 +65,7 @@ def calcular_todas_las_medidas(df_raw: pd.DataFrame) -> pd.DataFrame:
     df.columns = df.columns.str.strip()
     df['Nombre y Apellido'] = df['Nombre y Apellido'].str.strip()
     df['Sexo']              = df['Sexo'].str.strip().str.upper()
-    col_altura  = 'Altura de Pie '     # con espacio al final (como está en el Excel)
+    col_altura  = 'Altura de Pie'
     col_sentado = 'Altura sentado'
     col_peso    = 'Peso'
 
