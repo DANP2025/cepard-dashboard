@@ -646,7 +646,7 @@ elif pagina == "👤 PERFIL":
                    "steps":[{"range":[70,88],"color":"#0a1628"},
                              {"range":[88,95],"color":"#122040"},
                              {"range":[95,100],"color":"#0e3020"},
-                             {"range":[100,105],"color":"#00d4aa22"}],
+                             {"range":[100,105],"color":"rgba(0,212,170,0.13)"}],
                    "threshold":{"line":{"color":C_YELLOW,"width":3},"thickness":0.8,"value":100}},
             title={"text":"Altura Adulta Predicha %","font":{"color":C_BLUE,"size":12}},
         ))
@@ -671,7 +671,7 @@ elif pagina == "👤 PERFIL":
                    "steps":[{"range":[0,4],"color":"#0a1628"},
                              {"range":[4,8],"color":"#0e1e2a"},
                              {"range":[8,12],"color":"#0a2010"},
-                             {"range":[12,15],"color":"#00d4aa22"}],
+                             {"range":[12,15],"color":"rgba(0,212,170,0.13)"}],
                    "threshold":{"line":{"color":C_RED,"width":3},"thickness":0.8,"value":12}},
             title={"text":"Tasa de Crecimiento (cm/año)","font":{"color":C_BLUE,"size":12}},
         ))
