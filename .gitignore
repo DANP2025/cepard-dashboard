@@ -7,3 +7,4 @@ __pycache__/
 *.log
 .DS_Store
 Thumbs.db
+*.pbix  # Archivos de Power BI locales, no subir al repo

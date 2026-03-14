@@ -48,6 +48,31 @@ st.markdown("""
   .sync-err  { background:#3a0010; color:#ff6b8a; border:1px solid #ff6b8a; padding:4px 12px; border-radius:20px; font-size:0.75rem; font-weight:700; }
   #MainMenu,footer,header { visibility:hidden; }
   hr { border-color:#1e2d4a !important; }
+
+  /* Responsive: mejor presentación en móviles / notebooks pequeños */
+  @media (max-width: 900px) {
+    .block-container { padding: 0.6rem 0.8rem 0rem 0.8rem !important; }
+    .stApp { padding: 0 0.3rem; }
+
+    /* Ajustar tamaño de métricas y textos para mejor lectura en pantallas pequeñas */
+    div[data-testid="metric-container"] {
+      padding: 10px 12px;
+    }
+    div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
+      font-size: 1.4rem !important;
+    }
+
+    /* Mejorar legibilidad de tablas y gráficos */
+    .stDataFrame, .stAgGrid {
+      font-size: 0.9rem !important;
+    }
+
+    /* Colapsar la barra lateral para dejar más espacio en móvil */
+    section[data-testid="stSidebar"] {
+      width: auto !important;
+      position: relative;
+    }
+  }
 </style>
 """, unsafe_allow_html=True)
 
@@ -302,10 +327,10 @@ def cargar_local(path: str):
     df = _leer_excel(path)
     mtime = os.path.getmtime(path)
     ts = datetime.fromtimestamp(mtime).strftime("%d/%m/%Y %H:%M:%S")
-    return df, ts
+    return df, ts, mtime
 
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=60, show_spinner=False)
 def cargar_onedrive(url: str):
     import urllib.request
     if "1drv.ms" in url or "sharepoint.com" in url or "onedrive.live.com" in url:
@@ -338,20 +363,58 @@ with st.sidebar:
                       label_visibility="collapsed")
     st.divider()
 
+    # ── FUENTE DE DATOS
+    st.markdown("### 📊 Fuente de Datos")
+    fuente = st.selectbox("Seleccionar fuente", ["Local (archivo en repo)", "URL (OneDrive/Google Drive)"], index=0)
+    if fuente == "URL (OneDrive/Google Drive)":
+        url_input = st.text_input("URL del Excel", placeholder="Pegar enlace compartido aquí")
+        fuente_key = f"url_{url_input}" if url_input else "url_empty"
+    else:
+        fuente_key = "local"
+    st.divider()
+
     # ── CARGA DE DATOS (necesaria para que los filtros funcionen inmediatamente)
-    if "df_raw" not in st.session_state or st.session_state.df_raw is None:
-        try:
-            df_raw, ts_carga = cargar_local(str(LOCAL_FILE))
-            st.session_state.df_raw = df_raw
-            st.session_state.ts_carga = ts_carga
-            st.session_state.fuente_ok = True
-            st.session_state.source_desc = "Local"  # archivo incluido en el repo
-        except Exception as e:
-            st.session_state.df_raw = None
-            st.session_state.ts_carga = "—"
-            st.session_state.fuente_ok = False
-            st.session_state.source_desc = "Error"
-            st.error(f"Error al leer el archivo local: {e}")
+    if fuente == "Local (archivo en repo)":
+        current_mtime = os.path.getmtime(str(LOCAL_FILE))
+        last_mtime = st.session_state.get("last_mtime", None)
+        if "df_raw" not in st.session_state or st.session_state.df_raw is None or current_mtime != last_mtime or st.session_state.get("fuente_key") != fuente_key:
+            try:
+                df_raw, ts_carga, mtime = cargar_local(str(LOCAL_FILE))
+                st.session_state.df_raw = df_raw
+                st.session_state.ts_carga = ts_carga
+                st.session_state.last_mtime = mtime
+                st.session_state.fuente_ok = True
+                st.session_state.source_desc = "Local"
+                st.session_state.fuente_key = fuente_key
+            except Exception as e:
+                st.session_state.df_raw = None
+                st.session_state.ts_carga = "—"
+                st.session_state.fuente_ok = False
+                st.session_state.source_desc = "Error"
+                st.session_state.fuente_key = fuente_key
+                st.error(f"Error al leer el archivo local: {e}")
+    elif fuente == "URL (OneDrive/Google Drive)" and url_input:
+        if "df_raw" not in st.session_state or st.session_state.df_raw is None or st.session_state.get("fuente_key") != fuente_key:
+            try:
+                df_raw, ts_carga = cargar_onedrive(url_input)
+                st.session_state.df_raw = df_raw
+                st.session_state.ts_carga = ts_carga
+                st.session_state.fuente_ok = True
+                st.session_state.source_desc = f"URL: {url_input[:50]}..."
+                st.session_state.fuente_key = fuente_key
+            except Exception as e:
+                st.session_state.df_raw = None
+                st.session_state.ts_carga = "—"
+                st.session_state.fuente_ok = False
+                st.session_state.source_desc = "Error"
+                st.session_state.fuente_key = fuente_key
+                st.error(f"Error al leer desde URL: {e}")
+    else:
+        st.session_state.df_raw = None
+        st.session_state.ts_carga = "—"
+        st.session_state.fuente_ok = False
+        st.session_state.source_desc = "Sin fuente seleccionada"
+        st.session_state.fuente_key = fuente_key
 
     df_raw = st.session_state.get("df_raw")
     ts_carga = st.session_state.get("ts_carga", "—")
@@ -651,7 +714,8 @@ elif pagina == "👤 PERFIL":
 
     with c_g:
         # Gauge % Altura Adulta
-        phv_pct = float(last.get("PHV_Porcentaje_Actual", 90))
+        phv_pct = last.get("PHV_Porcentaje_Actual", 90)
+        phv_pct = float(phv_pct) if not pd.isna(phv_pct) else 90.0
         fig_g = go.Figure(go.Indicator(
             mode="gauge+number",
             value=phv_pct,
@@ -676,7 +740,8 @@ elif pagina == "👤 PERFIL":
         st.divider()
 
         # Tachómetro Growth Tempo
-        gt_val = float(last.get("Growth_Tempo_Ponderado_cm_año", 0))
+        gt_val = last.get("Growth_Tempo_Ponderado_cm_año", 0)
+        gt_val = float(gt_val) if not pd.isna(gt_val) else 0.0
         fig_t = go.Figure(go.Indicator(
             mode="gauge+number",
             value=gt_val,
