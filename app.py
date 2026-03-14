@@ -387,6 +387,13 @@ with st.sidebar:
     fuente_ok = st.session_state.get("fuente_ok", False)
     source_desc = st.session_state.get("source_desc", "")
 
+    # Debug: mostrar info de los datos
+    if df_raw is not None:
+        st.write(f"Debug: Datos cargados - Shape: {df_raw.shape}, Columnas: {list(df_raw.columns)}")
+        st.write("Primeras filas:", df_raw.head(3))
+    else:
+        st.write("Debug: No hay datos cargados")
+
     # ── DEPORTISTAS (filtros dinámicos)
     st.markdown("### 👤 Deportistas")
     if df_raw is not None:
