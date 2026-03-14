@@ -622,7 +622,7 @@ if pagina == "🏃 DEPORTISTAS":
 
     with col_der:
         sec("🚀 Más altas de crecimiento")
-        tabla(df_last.dropna(subset=["Growth_Tempo_Ponderado_cm_año"]).nlargest(8,"Growth_Tempo_Ponderado_cm_año"),
+        tabla(df_last.dropna(subset=["Growth_Tempo_Ponderado_cm_año"]).nlargest(13,"Growth_Tempo_Ponderado_cm_año"),
               ["Nombre y Apellido","Edad_Actual","Maturity_Offset_Actual","Growth_Tempo_Ponderado_cm_año"],
               {"Edad_Actual":"Edad","Maturity_Offset_Actual":"Offset","Growth_Tempo_Ponderado_cm_año":"GT cm/año"})
         st.divider()
