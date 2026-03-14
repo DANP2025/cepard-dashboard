@@ -363,58 +363,24 @@ with st.sidebar:
                       label_visibility="collapsed")
     st.divider()
 
-    # ── FUENTE DE DATOS
-    st.markdown("### 📊 Fuente de Datos")
-    fuente = st.selectbox("Seleccionar fuente", ["Local (archivo en repo)", "URL (OneDrive/Google Drive)"], index=0)
-    if fuente == "URL (OneDrive/Google Drive)":
-        url_input = st.text_input("URL del Excel", placeholder="Pegar enlace compartido aquí")
-        fuente_key = f"url_{url_input}" if url_input else "url_empty"
-    else:
-        fuente_key = "local"
-    st.divider()
-
     # ── CARGA DE DATOS (necesaria para que los filtros funcionen inmediatamente)
-    if fuente == "Local (archivo en repo)":
-        current_mtime = os.path.getmtime(str(LOCAL_FILE))
-        last_mtime = st.session_state.get("last_mtime", None)
-        if "df_raw" not in st.session_state or st.session_state.df_raw is None or current_mtime != last_mtime or st.session_state.get("fuente_key") != fuente_key:
-            try:
-                df_raw, ts_carga, mtime = cargar_local(str(LOCAL_FILE))
-                st.session_state.df_raw = df_raw
-                st.session_state.ts_carga = ts_carga
-                st.session_state.last_mtime = mtime
-                st.session_state.fuente_ok = True
-                st.session_state.source_desc = "Local"
-                st.session_state.fuente_key = fuente_key
-            except Exception as e:
-                st.session_state.df_raw = None
-                st.session_state.ts_carga = "—"
-                st.session_state.fuente_ok = False
-                st.session_state.source_desc = "Error"
-                st.session_state.fuente_key = fuente_key
-                st.error(f"Error al leer el archivo local: {e}")
-    elif fuente == "URL (OneDrive/Google Drive)" and url_input:
-        if "df_raw" not in st.session_state or st.session_state.df_raw is None or st.session_state.get("fuente_key") != fuente_key:
-            try:
-                df_raw, ts_carga = cargar_onedrive(url_input)
-                st.session_state.df_raw = df_raw
-                st.session_state.ts_carga = ts_carga
-                st.session_state.fuente_ok = True
-                st.session_state.source_desc = f"URL: {url_input[:50]}..."
-                st.session_state.fuente_key = fuente_key
-            except Exception as e:
-                st.session_state.df_raw = None
-                st.session_state.ts_carga = "—"
-                st.session_state.fuente_ok = False
-                st.session_state.source_desc = "Error"
-                st.session_state.fuente_key = fuente_key
-                st.error(f"Error al leer desde URL: {e}")
-    else:
-        st.session_state.df_raw = None
-        st.session_state.ts_carga = "—"
-        st.session_state.fuente_ok = False
-        st.session_state.source_desc = "Sin fuente seleccionada"
-        st.session_state.fuente_key = fuente_key
+    current_mtime = os.path.getmtime(str(LOCAL_FILE))
+    last_mtime = st.session_state.get("last_mtime", None)
+    if "df_raw" not in st.session_state or st.session_state.df_raw is None or current_mtime != last_mtime:
+        try:
+            df_raw, ts_carga, mtime = cargar_local(str(LOCAL_FILE))
+            st.session_state.df_raw = df_raw
+            st.session_state.ts_carga = ts_carga
+            st.session_state.last_mtime = mtime
+            st.session_state.fuente_ok = True
+            st.session_state.source_desc = "Local"  # archivo incluido en el repo
+        except Exception as e:
+            st.session_state.df_raw = None
+            st.session_state.ts_carga = "—"
+            st.session_state.fuente_ok = False
+            st.session_state.source_desc = "Error"
+            st.error(f"Error al leer el archivo local: {e}")
+            st.write("Detalles del error:", str(e))  # Agregar detalles para debug
 
     df_raw = st.session_state.get("df_raw")
     ts_carga = st.session_state.get("ts_carga", "—")
