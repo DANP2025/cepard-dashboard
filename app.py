@@ -415,59 +415,6 @@ with st.sidebar:
 
     st.divider()
 
-    # ── FUENTE DE DATOS (expander, porque por defecto usamos el archivo local del repo)
-    with st.expander("📡 Fuente de datos", expanded=False):
-        st.markdown("La app usa el archivo local incluido en el repo. Si necesitás actualizar datos, reemplaza el Excel y redeploya.")
-        st.markdown(f"**Fuente actual:** {source_desc} | {ts_carga}")
-
-        if st.button("🔄 Recargar datos (local)", use_container_width=True):
-            cargar_local.clear()
-            st.experimental_rerun()
-
-        st.markdown("**Opción avanzada (no obligatoria):** cargar desde URL externa")
-        fuente = st.radio("Origen", ["📁 Local", "☁️ OneDrive / URL"], index=0, label_visibility="collapsed")
-
-        if fuente == "☁️ OneDrive / URL":
-            default_url = ""
-            try:
-                default_url = st.secrets.get("ONEDRIVE_URL", "")
-            except Exception:
-                pass
-            url_input = st.text_input("URL del Excel:", value=default_url,
-                                      placeholder="https://1drv.ms/x/s!...")
-            c1, c2 = st.columns(2)
-            with c1:
-                intervalo = st.selectbox("Auto-refresh",
-                    ["5 min","15 min","30 min","1 hora","Desactivado"])
-            with c2:
-                if st.button("🔄 Ahora", use_container_width=True):
-                    cargar_onedrive.clear()
-                    st.experimental_rerun()
-
-            if url_input:
-                with st.spinner("Descargando..."):
-                    try:
-                        df_raw, ts_carga = cargar_onedrive(url_input)
-                        fuente_ok = True
-                        st.session_state.df_raw = df_raw
-                        st.session_state.ts_carga = ts_carga
-                        st.session_state.fuente_ok = True
-                        st.session_state.source_desc = "URL"
-                        st.experimental_rerun()
-                    except Exception as e:
-                        st.markdown(f'<span class="sync-err">❌ {str(e)[:60]}</span>',
-                                    unsafe_allow_html=True)
-
-            # Auto-refresh
-            if intervalo != "Desactivado" and url_input and fuente_ok:
-                mins = {"5 min":5,"15 min":15,"30 min":30,"1 hora":60}[intervalo]
-                if "last_refresh" not in st.session_state:
-                    st.session_state.last_refresh = time.time()
-                if (time.time() - st.session_state.last_refresh)/60 >= mins:
-                    cargar_onedrive.clear()
-                    st.session_state.last_refresh = time.time()
-                    st.experimental_rerun()
-
     st.divider()
 
     n_dep = len(df_raw) if df_raw is not None else 0
