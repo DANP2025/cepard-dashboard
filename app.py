@@ -387,6 +387,12 @@ with st.sidebar:
     fuente_ok = st.session_state.get("fuente_ok", False)
     source_desc = st.session_state.get("source_desc", "")
 
+    # Debug temporal
+    if df_raw is not None:
+        st.sidebar.write(f"Debug: Shape: {df_raw.shape}")
+    else:
+        st.sidebar.write("Debug: No data")
+
     # ── DEPORTISTAS (filtros dinámicos)
     st.markdown("### 👤 Deportistas")
     if df_raw is not None:
