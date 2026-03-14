@@ -316,9 +316,9 @@ LOCAL_FILE = Path(__file__).parent / "Plantilla_Crecimiento_y_Maduracion.xlsx"
 def _leer_excel(source) -> pd.DataFrame:
     """Lee Excel (ruta o bytes) y calcula todas las medidas."""
     if isinstance(source, (str, Path)):
-        df_raw = pd.read_excel(source)
+        df_raw = pd.read_excel(source, sheet_name="Datos")
     else:
-        df_raw = pd.read_excel(io.BytesIO(source))
+        df_raw = pd.read_excel(io.BytesIO(source), sheet_name="Datos")
     return calcular_todas_las_medidas(df_raw)
 
 
@@ -386,13 +386,6 @@ with st.sidebar:
     ts_carga = st.session_state.get("ts_carga", "—")
     fuente_ok = st.session_state.get("fuente_ok", False)
     source_desc = st.session_state.get("source_desc", "")
-
-    # Debug: mostrar info de los datos
-    if df_raw is not None:
-        st.write(f"Debug: Datos cargados - Shape: {df_raw.shape}, Columnas: {list(df_raw.columns)}")
-        st.write("Primeras filas:", df_raw.head(3))
-    else:
-        st.write("Debug: No hay datos cargados")
 
     # ── DEPORTISTAS (filtros dinámicos)
     st.markdown("### 👤 Deportistas")
