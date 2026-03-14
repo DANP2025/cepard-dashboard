@@ -373,19 +373,17 @@ with st.sidebar:
             st.session_state.ts_carga = ts_carga
             st.session_state.last_mtime = mtime
             st.session_state.fuente_ok = True
-            st.session_state.source_desc = "Local"  # archivo incluido en el repo
         except Exception as e:
             st.session_state.df_raw = None
             st.session_state.ts_carga = "—"
             st.session_state.fuente_ok = False
-            st.session_state.source_desc = "Error"
             st.error(f"Error al leer el archivo local: {e}")
             st.write("Detalles del error:", str(e))  # Agregar detalles para debug
 
     df_raw = st.session_state.get("df_raw")
     ts_carga = st.session_state.get("ts_carga", "—")
-    fuente_ok = st.session_state.get("fuente_ok", False)
-    source_desc = st.session_state.get("source_desc", "")
+    fuente_ok = True
+    source_desc = "Local"
 
     # ── DEPORTISTAS (filtros dinámicos)
     st.markdown("### 👤 Deportistas")
@@ -496,7 +494,7 @@ c1, c2, c3 = st.columns([1, 6, 4])
 with c1: st.markdown("## 🏅")
 with c2: st.markdown("### CEPARD – Crecimiento y Maduración")
 with c3:
-    badge = "sync-ok" if fuente_ok else "sync-warn"
+    badge = "sync-ok"
     st.markdown(
         f'<div style="text-align:right;padding-top:12px">'
         f'<span class="{badge}">⚡ {df["Nombre y Apellido"].nunique()} deportistas | {ts_carga}</span></div>',
