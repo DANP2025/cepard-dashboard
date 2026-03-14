@@ -136,8 +136,8 @@ def calcular_todas_las_medidas(df_raw: pd.DataFrame) -> pd.DataFrame:
     col_peso    = 'Peso'
 
     # ── Fechas
-    df['Fecha de Nacimiento'] = pd.to_datetime(df['Fecha de Nacimiento'], errors='coerce')
-    df['Fecha de Evaluacion'] = pd.to_datetime(df['Fecha de Evaluacion'], errors='coerce')
+    df['Fecha de Nacimiento'] = pd.to_datetime(df['Fecha de Nacimiento'], unit='D', origin='1899-12-30', errors='coerce')
+    df['Fecha de Evaluacion'] = pd.to_datetime(df['Fecha de Evaluacion'], unit='D', origin='1899-12-30', errors='coerce')
 
     # ── Edad decimal y edad legible
     df['Edad_Decimal'] = ((df['Fecha de Evaluacion'] - df['Fecha de Nacimiento'])
@@ -386,12 +386,6 @@ with st.sidebar:
     ts_carga = st.session_state.get("ts_carga", "—")
     fuente_ok = st.session_state.get("fuente_ok", False)
     source_desc = st.session_state.get("source_desc", "")
-
-    # Debug temporal
-    if df_raw is not None:
-        st.sidebar.write(f"Debug: Shape: {df_raw.shape}")
-    else:
-        st.sidebar.write("Debug: No data")
 
     # ── DEPORTISTAS (filtros dinámicos)
     st.markdown("### 👤 Deportistas")
